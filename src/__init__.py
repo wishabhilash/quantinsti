@@ -22,10 +22,12 @@ def start_ticker(args):
 def start_strategy(args):
     import importlib
     try:
-        _strategy = importlib.import_module("src.strategy.%s" % args['strategy_name'])
+        _strategy = importlib.import_module("src.strategy.%s" % args['name'])
     except ImportError as e:
-        raise e
+        raise ImportError('Strategy with the name "%s" doesn\'t exist.' % args['name'])
 
+    strategy = _strategy.Strategy(args)
+    strategy.run()
 
 
 def execute(args):
@@ -33,4 +35,6 @@ def execute(args):
         start_celery()
     elif args['command'] == "ticker":
         start_ticker(args)
+    elif args['command'] == "strategy":
+        start_strategy(args)
     

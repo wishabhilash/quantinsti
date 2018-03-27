@@ -7,7 +7,7 @@ class Service(object):
         self._r = redis.Redis()
         self.pubsub = self._r.pubsub()    
 
-    def subscribe(self):
+    def run(self):
         '''
         Subscribe to a list of channels.
         '''
@@ -15,7 +15,7 @@ class Service(object):
             raise TypeError('Subscription channels must be in a <list>.')
         
         self.pubsub.subscribe(self.channels)
-        print('Consumer started')
+        print('Subscriber running...')
         self._on_data()
 
     def publish(self, data):
