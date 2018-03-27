@@ -8,11 +8,19 @@ class StaticQueue(object):
         self.queue_size = queue_size
 
     def push(self, item):
+        '''
+        Pushes the new item to the right
+        while popping the item on the left.
+        '''
         self.storage.append(item)
         if len(self.storage) > self.queue_size:
             self.storage.pop(0)
 
-    def get_list(self):
+    def bulk_push(self, *args):
+        for item in args:
+            self.push(item)
+
+    def items(self):
         return self.storage
 
     def __len__(self):
@@ -22,9 +30,10 @@ class StaticQueue(object):
         return json.dumps(self.storage)
 
     def __getitem__(self, key):
-        if not isinstance(key, int):
-            raise TypeError("Key must be an int")
-        try:
+        if isinstance(key, int):
             return self.storage[key]
-        except IndexError as e:
-            raise e
+        elif isinstance(key, slice):
+            return self.storage[key.start:key.stop:key.step]
+        else:
+            raise TypeError("Key must be of the type <int> or <slice>.")
+        

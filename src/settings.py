@@ -5,3 +5,5 @@ class Config(object):
     imports = (
         
     )
+
+    ticker_channel = '__ticker__'
