@@ -15,6 +15,9 @@ if __name__ == '__main__':
     # Celery
     celery_parser = subparsers.add_parser('celery')
 
+    # Celery
+    sync_parser = subparsers.add_parser('sync')
+
     # Ticker
     ticker_parser = subparsers.add_parser('ticker')
     ticker_parser.add_argument(

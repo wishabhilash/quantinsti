@@ -7,3 +7,9 @@ class Config(object):
     )
 
     ticker_channel = '__ticker__'
+
+    db = {
+        'user': 'root',
+        'password': 'chicken',
+        'db': 'quantinsti'
+    }

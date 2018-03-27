@@ -29,6 +29,12 @@ def start_strategy(args):
     strategy = _strategy.Strategy(args)
     strategy.run()
 
+def sync_models(args):
+    from src.models import mysql_db as db
+    from src.models import User, Order
+    db.create_tables([User, Order])
+
+
 
 def execute(args):
     if args['command'] == "celery":
@@ -37,4 +43,6 @@ def execute(args):
         start_ticker(args)
     elif args['command'] == "strategy":
         start_strategy(args)
+    elif args['command'] == "sync":
+        sync_models(args)
     
