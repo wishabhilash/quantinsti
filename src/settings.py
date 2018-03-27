@@ -3,7 +3,7 @@ class Config(object):
     result_backend = "redis://localhost:6379/1"
 
     imports = (
-        
+        'src.tasks'
     )
 
     ticker_channel = '__ticker__'

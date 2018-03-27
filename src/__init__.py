@@ -19,6 +19,15 @@ def start_ticker(args):
     ticker = Ticker(args['interval'])
     ticker.run()
 
+def start_strategy(args):
+    import importlib
+    try:
+        _strategy = importlib.import_module("src.strategy.%s" % args['strategy_name'])
+    except ImportError as e:
+        raise e
+
+
+
 def execute(args):
     if args['command'] == "celery":
         start_celery()

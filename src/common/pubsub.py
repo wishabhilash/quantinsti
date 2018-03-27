@@ -13,7 +13,8 @@ class Service(object):
         '''
         if not isinstance(self.channels, list):
             raise TypeError('Subscription channels must be in a <list>.')
-        self.pubsub.subscribe(channels)
+        
+        self.pubsub.subscribe(self.channels)
         print('Consumer started')
         self._on_data()
 
@@ -32,6 +33,9 @@ class Service(object):
     def _on_data(self):
         for item in self.pubsub.listen():
             self.on_data(item['data'])
+
+    def _str_if_bytes(self, data):
+        return data.decode('utf-8') if isinstance(data, bytes) else data
 
     def on_data(self, data):
         '''
