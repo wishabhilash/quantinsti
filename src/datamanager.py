@@ -2,6 +2,8 @@ from src.settings import Config
 import os
 from src.common.utils import Singleton
 from src.common.utils import StaticQueue
+import redis
+import json
 
 
 config = Config()
@@ -9,8 +11,11 @@ config = Config()
 class DataManager(object, metaclass=Singleton):
     def __init__(self, instrument):
         self.filepath = os.path.join(config.datafile_path, "%s.csv" % instrument)
+        self._r = redis.Redis()
+        self.instrument = instrument
 
     def query(self, date, lookback):
+        # Check if data available in cache
         data = self._get_data_from_cache(date, lookback)
         if data is not None:
             return data
@@ -41,10 +46,29 @@ class DataManager(object, metaclass=Singleton):
     
 
     def _get_data_from_cache(self, date, lookback):
-        return None
+        '''
+        Cache for datamanager for optimised lookup.
+        '''
+        key = self._create_cache_key(date, lookback)
+        try:
+            data = self._r.get(key)
+        except Exception as e:
+            return None
+        return json.loads(data)
 
     def _save_data_to_cache(self, data, date, lookback):
-        pass
+        '''
+        Cache for datamanager for optimised lookup.
+        '''
+        key = self._create_cache_key(date, lookback)
+        try:
+            self._r.set(key, json.dumps(data))
+        except Exception as e:
+            return False
+        return True
+
+    def _create_cache_key(self, date, lookback):
+        return "dm:%s:%s:%s:" % (self.instrument, date, lookback)
 
     def _convert_to_json(self, row):
         split_row = row.split(',')

@@ -10,7 +10,8 @@ broker = Broker()
 @app.task
 def get_quotes(instrument, timestamp, lookback):
     dm = DataManager(instrument)
-    return dm.query(timestamp, lookback)
+    data = dm.query(timestamp, lookback)
+    return [item['close'] for item in data]
 
 @app.task
 def execute_order(account_id, instrument, quantity, signal):

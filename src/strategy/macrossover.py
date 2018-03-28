@@ -19,35 +19,47 @@ class Algorithm(Service):
         
 
     def on_data(self, data):
-
         if self.current_date is None:
             self.current_date = self.start_date
         else:
             self.current_date += timedelta(days=1)
 
         # Get close data results from DataManager
-        result = get_quotes.delay(121, self.current_date, self.args['lma_period']).get()
+        result = get_quotes.delay(
+            self.args['instrument'], 
+            self.current_date, 
+            self.args['lma_period']
+        ).get()
+        
+        # Calculate sma and lma
         sma = self.ma(result, self.args['sma_period'])
         lma = self.ma(result, self.args['lma_period'])
 
+        self._place_order(sma, lma, result[-1])
+        
+        if self.current_date.strftime(self.date_format) == self.args['end_date']:
+            self.output_result()
+            exit()
+
+    def _place_order(self, sma, lma, price):
+        # If sma < lma then sell
         if sma < lma:
             execute_order.delay(
                 self.user.name, 
                 self.args['instrument'],
-                self.calculate_quantity_to_be_bought(result[-1]),
+                self.calculate_quantity_to_be_bought(price),
                 'sell'
             )
+
+        # If sma > lma then buy
         elif sma > lma:
             execute_order.delay(
                 self.user.name, 
                 self.args['instrument'],
-                self.calculate_quantity_to_be_bought(result[-1]),
+                self.calculate_quantity_to_be_bought(price),
                 'buy'
             )
 
-        if self.current_date.strftime(self.date_format) == self.args['end_date']:
-            self.output_result()
-            exit()
         
     def _get_user(self, account_id, initial_capital):
         '''
