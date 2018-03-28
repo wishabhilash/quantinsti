@@ -3,6 +3,7 @@ from src.tasks import get_quotes, execute_order
 from src.settings import Config
 from datetime import datetime, timedelta
 from src.models import User
+from src.common import Session
 
 
 class Algorithm(Service):
@@ -11,18 +12,38 @@ class Algorithm(Service):
 
     def __init__(self, args):
         self.config = Config()
+        
         super().__init__(self.config.ticker_channel)
         self.args = args
-        self.start_date = datetime.strptime(self.args['start_date'], self.date_format)
-        self.end_date = datetime.strptime(self.args['end_date'], self.date_format)
-        self.user = self._get_user(args['name'], args['initial_capital'])
-        
+        self.start_date = self._sanitize_datetime(self.args['start_date'])
+        self.end_date = self._sanitize_datetime(self.args['end_date'])
+        self.user = self._get_user(args['userid'], args['capital'])
+
+        # Create the user session
+        self.session = Session(self.user.name)
+
+        # If new session is created then update the fund
+        if not self.session.exists():
+            self.session.set('fund', self.user.fund)
+    
+    def _sanitize_datetime(self, timestamp):
+        a = datetime.strptime(timestamp, self.date_format)
+        return a.strftime(self.date_format)
+
+    def _increment_date(self, date):
+        _d = datetime.strptime(date, self.date_format)
+        new_date = _d + timedelta(days=1)
+        return new_date.strftime(self.date_format)
 
     def on_data(self, data):
+        '''
+        This is where tick data is received
+        and further processing is done.
+        '''
         if self.current_date is None:
             self.current_date = self.start_date
         else:
-            self.current_date += timedelta(days=1)
+            self.current_date = self._increment_date(self.current_date)
 
         # Get close data results from DataManager
         result = get_quotes.delay(
@@ -35,40 +56,98 @@ class Algorithm(Service):
         sma = self.ma(result, self.args['sma_period'])
         lma = self.ma(result, self.args['lma_period'])
 
-        self._place_order(sma, lma, result[-1])
+        print(self.current_date, sma, lma, 'buy' if sma > lma else 'sell')
+        result = self._place_order(sma, lma, result[-1])
         
-        if self.current_date.strftime(self.date_format) == self.args['end_date']:
+        if self.current_date == self.args['end_date']:
             self.output_result()
+            self.session.clear()
             exit()
+
+    def _sell_or_close_order(self, sma, lma, price, quantity):
+        results = []
+        # Check if any open long orders exist
+        orders = self.user.orders.filter(trade_type='long', status='open')
+        if len(orders):
+            for order in orders:
+                result = execute_order.delay(
+                    self.user.name, 
+                    self.args['instrument'],
+                    quantity,
+                    price,
+                    'buy',
+                    order._id
+                ).get()
+                results.append(result)
+        else:
+            if not quantity:
+                return False
+
+            # Place order
+            result = execute_order.delay(
+                self.user.name, 
+                self.args['instrument'],
+                quantity,
+                price,
+                'sell'
+            ).get()
+            results.append(result)
+        
+        return results
+
+    def _buy_or_close_order(self, sma, lma, price, quantity):
+        results = []
+        # Check if any open long orders exist
+        orders = self.user.orders.filter(trade_type='short', status='open')
+        if len(orders):
+            for order in orders:
+                result = execute_order.delay(
+                    self.user.name, 
+                    self.args['instrument'],
+                    quantity,
+                    price,
+                    'sell',
+                    order._id
+                ).get()
+                results.append(result)
+        else:
+            if not quantity:
+                return None
+
+            # Place order
+            result = execute_order.delay(
+                self.user.name, 
+                self.args['instrument'],
+                quantity,
+                price,
+                'buy'
+            ).get()
+            results.append(result)
+
+        return results
+
 
     def _place_order(self, sma, lma, price):
         # If sma < lma then sell
+        quantity = self.calculate_quantity_to_be_bought(price)
+        
         if sma < lma:
-            execute_order.delay(
-                self.user.name, 
-                self.args['instrument'],
-                self.calculate_quantity_to_be_bought(price),
-                'sell'
-            )
-
+            # Check if any open long orders exist
+            self._sell_or_close_order(sma, lma, price, quantity)
+            
         # If sma > lma then buy
         elif sma > lma:
-            execute_order.delay(
-                self.user.name, 
-                self.args['instrument'],
-                self.calculate_quantity_to_be_bought(price),
-                'buy'
-            )
-
+            self._buy_or_close_order(sma, lma, price, quantity)
+            
         
     def _get_user(self, account_id, initial_capital):
         '''
         Returns user if exists else creates new and returns user.
         '''
-        user = User.get(name=account_id)
-        if user:
+        try:
+            user = User.get(name=account_id)
             return user
-        else:    
+        except Exception as e:
             user = User(name=account_id, fund=initial_capital)
             user.save()
             return user

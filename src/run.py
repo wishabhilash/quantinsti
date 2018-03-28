@@ -73,14 +73,17 @@ if __name__ == '__main__':
         '-sp',
         '--sma_period',
         help="Period for SMA.",
-        default=5
+        default=5,
+        type=int
     )
 
     strategy_parser.add_argument(
         '-lp',
         '--lma_period',
         help="Period for SMA.",
-        default=20
+        default=20,
+        type=int
+
     )
 
     args = vars(parser.parse_args())

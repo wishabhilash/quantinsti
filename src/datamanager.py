@@ -1,6 +1,6 @@
 from src.settings import Config
 import os
-from src.common.utils import Singleton
+from src.common.utils import Singleton, str_if_bytes
 from src.common.utils import StaticQueue
 import redis
 import json
@@ -19,7 +19,6 @@ class DataManager(object, metaclass=Singleton):
         data = self._get_data_from_cache(date, lookback)
         if data is not None:
             return data
-
         return self._get_data_from_file(date, lookback)
 
     def _get_data_from_file(self, date, lookback):
@@ -34,9 +33,13 @@ class DataManager(object, metaclass=Singleton):
         with open(self.filepath) as f:
             for line in f:
                 line = line.strip(" ").strip('\n')
-                queue.push(line)
-                if line.startswith(date):
-                    break
+                try:
+                    line.index('null')
+                    continue
+                except ValueError as e:
+                    queue.push(line)
+                    if line.startswith(date):
+                        break
         
         # Save retreived data to cache
         self._save_data_to_cache(queue.items(), date, lookback)
@@ -54,7 +57,12 @@ class DataManager(object, metaclass=Singleton):
             data = self._r.get(key)
         except Exception as e:
             return None
-        return json.loads(data)
+        
+        if data is None:
+            return None
+
+        json_data = json.loads(str_if_bytes(data)) if data is not None else None
+        return [self._convert_to_json(item) for item in json_data]
 
     def _save_data_to_cache(self, data, date, lookback):
         '''

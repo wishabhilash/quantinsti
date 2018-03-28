@@ -1,5 +1,8 @@
 import json
 
+def str_if_bytes(data):
+    return data.decode('utf-8') if isinstance(data, bytes) else data
+
 class StaticQueue(object):
     storage = []
     queue_size = None

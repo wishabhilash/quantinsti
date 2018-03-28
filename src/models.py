@@ -24,7 +24,6 @@ class Order(Model):
     user = ForeignKeyField(User, backref='orders')
     instrument = CharField()
     quantity = IntegerField()
-    signal = CharField(choices=[(1,'buy'), (2, 'sell')])
     trade_type = CharField(choices=[(1, 'long'), (2, 'short')])
     buy_price = FloatField(null=True)
     sell_price = FloatField(null=True)

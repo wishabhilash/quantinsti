@@ -26,7 +26,7 @@ def start_strategy(args):
     except ImportError as e:
         raise ImportError('Strategy with the name "%s" doesn\'t exist.' % args['name'])
 
-    strategy = _strategy.Strategy(args)
+    strategy = _strategy.Algorithm(args)
     strategy.run()
 
 def sync_models(args):

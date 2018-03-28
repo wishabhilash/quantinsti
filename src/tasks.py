@@ -14,9 +14,12 @@ def get_quotes(instrument, timestamp, lookback):
     return [item['close'] for item in data]
 
 @app.task
-def execute_order(account_id, instrument, quantity, signal):
+def execute_order(account_id, instrument, quantity, price, signal, order_id=None):
     ##### TODO ####
     # Create or update order for user account_id
 
-    return broker.buy() if signal == 'BUY' else broker.sell()
+    if signal == 'buy':
+        broker.buy(account_id, instrument, quantity, price, signal, order_id)
+    else:
+        broker.sell(account_id, instrument, quantity, price, signal, order_id)
 
