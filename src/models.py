@@ -13,7 +13,6 @@ mysql_db = MySQLDatabase(
 
 class User(Model):
     name = CharField(unique=True)
-    session_key = UUIDField(default=uuid.uuid1())
     fund = IntegerField(default=0)
 
     class Meta:
