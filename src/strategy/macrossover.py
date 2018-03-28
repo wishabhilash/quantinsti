@@ -9,6 +9,7 @@ from src.common import Session
 class Algorithm(Service):
     current_date = None
     date_format = "%Y-%m-%d"
+    open_orders = []
 
     def __init__(self, args):
         self.config = Config()
@@ -19,13 +20,6 @@ class Algorithm(Service):
         self.end_date = self._sanitize_datetime(self.args['end_date'])
         self.user = self._get_user(args['userid'], args['capital'])
 
-        # Create the user session
-        self.session = Session(self.user.name)
-
-        # If new session is created then update the fund
-        if not self.session.exists():
-            self.session.set('fund', self.user.fund)
-    
     def _sanitize_datetime(self, timestamp):
         a = datetime.strptime(timestamp, self.date_format)
         return a.strftime(self.date_format)
@@ -64,7 +58,6 @@ class Algorithm(Service):
         
         if self.current_date == self.args['end_date']:
             self.output_portfolio_value(current_price)
-            self.session.clear()
             exit()
 
     def _sell_or_close_order(self, sma, lma, price, quantity):
@@ -77,17 +70,18 @@ class Algorithm(Service):
         )
         # print("length is", len(orders))
         if len(orders):
-            _o = None
             for order in orders:
-                result = execute_order.delay(
-                    self.user.name, 
-                    self.args['instrument'],
-                    quantity,
-                    price,
-                    'sell',
-                    order._id
-                ).get()
-                results.append(result)
+                if str(order._id) in self.open_orders:
+                    result = execute_order.delay(
+                        self.user.name, 
+                        self.args['instrument'],
+                        quantity,
+                        price,
+                        'sell',
+                        order._id
+                    ).get()
+                    self.open_orders.remove(str(order._id))
+                    results.append(result)
         else:
             if not quantity:
                 return False
@@ -100,6 +94,7 @@ class Algorithm(Service):
                 price,
                 'sell'
             ).get()
+            self.open_orders.append(result['order_id'])
             results.append(result)
         
         return results
@@ -110,15 +105,17 @@ class Algorithm(Service):
         orders = self.user.orders.filter(trade_type='short', status='open')
         if len(orders):
             for order in orders:
-                result = execute_order.delay(
-                    self.user.name, 
-                    self.args['instrument'],
-                    quantity,
-                    price,
-                    'buy',
-                    order._id
-                ).get()
-                results.append(result)
+                if str(order._id) in self.open_orders:
+                    result = execute_order.delay(
+                        self.user.name, 
+                        self.args['instrument'],
+                        quantity,
+                        price,
+                        'buy',
+                        order._id
+                    ).get()
+                    self.open_orders.remove(str(order._id))
+                    results.append(result)
         else:
             if not quantity:
                 return None
@@ -131,6 +128,7 @@ class Algorithm(Service):
                 price,
                 'buy'
             ).get()
+            self.open_orders.append(result['order_id'])
             results.append(result)
 
         return results
