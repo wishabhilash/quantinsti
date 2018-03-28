@@ -2,12 +2,15 @@ from src.celery_app import celery_app as app
 from random import random
 import uuid
 from src.broker import Broker
+from src.datamanager import DataManager
 
 broker = Broker()
 
+
 @app.task
 def get_quotes(instrument, timestamp, lookback):
-    return "quote"
+    dm = DataManager(instrument)
+    return dm.query(timestamp, lookback)
 
 @app.task
 def execute_order(account_id, instrument, quantity, signal):
@@ -16,10 +19,3 @@ def execute_order(account_id, instrument, quantity, signal):
 
     return broker.buy() if signal == 'BUY' else broker.sell()
 
-
-
-@app.task
-def get_user(userid, initial_capital):
-    #### TODO ####
-    # Get or create user
-    pass

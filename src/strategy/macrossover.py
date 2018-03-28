@@ -1,7 +1,8 @@
 from src.common.pubsub import Service
-from src.tasks import get_quotes
+from src.tasks import get_quotes, execute_order
 from src.settings import Config
 from datetime import datetime, timedelta
+from src.models import User
 
 
 class Algorithm(Service):
@@ -14,6 +15,7 @@ class Algorithm(Service):
         self.args = args
         self.start_date = datetime.strptime(self.args['start_date'], self.date_format)
         self.end_date = datetime.strptime(self.args['end_date'], self.date_format)
+        self.user = self._get_user(args['name'], args['initial_capital'])
         
 
     def on_data(self, data):
@@ -24,15 +26,52 @@ class Algorithm(Service):
             self.current_date += timedelta(days=1)
 
         # Get close data results from DataManager
-        result = get_quotes.delay(121, self.current_date, self.args['lma_period'])
-        print(result.get())
+        result = get_quotes.delay(121, self.current_date, self.args['lma_period']).get()
+        sma = self.ma(result, self.args['sma_period'])
+        lma = self.ma(result, self.args['lma_period'])
+
+        if sma < lma:
+            execute_order.delay(
+                self.user.name, 
+                self.args['instrument'],
+                self.calculate_quantity_to_be_bought(result[-1]),
+                'sell'
+            )
+        elif sma > lma:
+            execute_order.delay(
+                self.user.name, 
+                self.args['instrument'],
+                self.calculate_quantity_to_be_bought(result[-1]),
+                'buy'
+            )
 
         if self.current_date.strftime(self.date_format) == self.args['end_date']:
+            self.output_result()
             exit()
+        
+    def _get_user(self, account_id, initial_capital):
+        '''
+        Returns user if exists else creates new and returns user.
+        '''
+        user = User.get(name=account_id)
+        if user:
+            return user
+        else:    
+            user = User(name=account_id, fund=initial_capital)
+            user.save()
+            return user
 
-        # while True:
-        #     get_quotes.delay(
-        #         121,
-        #         ts,
-        #         self.args['lma_period']
-        #     )
+    def ma(self, data, period):
+        '''
+        Computes and returns the requisted moving average.
+        '''
+        sum = 0
+        for i in data[-period:]:
+            sum += i
+        return sum/period
+
+    def calculate_quantity_to_be_bought(self, price):
+        return int(self.user.fund/price)
+
+    def output_result(self):
+        pass

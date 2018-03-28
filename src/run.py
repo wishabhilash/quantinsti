@@ -36,6 +36,12 @@ if __name__ == '__main__':
     )
 
     strategy_parser.add_argument(
+        'instrument',
+        help="Instrument Id to be used for running the strategy.",
+        type=str
+    )
+
+    strategy_parser.add_argument(
         'userid',
         help="Users ID (a new user is created if user doesn't exist).",
         type=str
