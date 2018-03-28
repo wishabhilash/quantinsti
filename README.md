@@ -7,11 +7,11 @@
     quantinsti
 
 ## Show help
-Command parser is created using argparse. Hence nested helps are enabled by default.
+### Command parser is created using argparse. Hence nested helps are enabled by default.
     python src/run.py -h
 
 ## Prepare DB
-Fire the command below:
+### Fire the command below:
     python src/run.py sync
 
 ## Start services
