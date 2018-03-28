@@ -26,3 +26,5 @@
     use -h for additional parameters.
         Ex. python src/run.py strategy macrossover 121 wish
 
+    Strategy name is the name of the new strategy file inside directory strategy.
+
