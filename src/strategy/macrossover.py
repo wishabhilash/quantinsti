@@ -55,10 +55,10 @@ class Algorithm(Service):
         # Calculate sma and lma
         sma = self.ma(result, self.args['sma_period'])
         lma = self.ma(result, self.args['lma_period'])
-
-        print(self.current_date, sma, lma, 'buy' if sma > lma else 'sell')
-        result = self._place_order(sma, lma, result[-1])
         
+        result = self._place_order(sma, lma, result[-1])
+        _u = self._get_updated_user()
+        print(self.current_date, 'buy' if sma > lma else 'sell', _u.fund, result)
         if self.current_date == self.args['end_date']:
             self.output_result()
             self.session.clear()
@@ -162,7 +162,13 @@ class Algorithm(Service):
         return sum/period
 
     def calculate_quantity_to_be_bought(self, price):
-        return int(self.user.fund/price)
+        user = self._get_updated_user()
+        return int(user.fund/price)
+
+    def _get_updated_user(self):
+        users = User.select().where(User.name==self.user.name)
+        for user in users.iterator():
+            return user
 
     def output_result(self):
         pass

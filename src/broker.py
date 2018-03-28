@@ -16,7 +16,6 @@ class Broker(object):
                 order = self._create_new_buy_order(account_id, instrument, quantity, price, trade_type)
             else:
                 order = self._close_sell_orders(order_id, price)
-            
             return {
                 'order_id': str(order._id),
                 'status': status
@@ -28,6 +27,7 @@ class Broker(object):
             }
     
     def _create_new_buy_order(self, account_id, instrument, quantity, price, trade_type):
+        print("Creating new buy order")
         user = User.get(name=account_id)
         order = Order(
             user = user,
@@ -37,7 +37,17 @@ class Broker(object):
             buy_price = price,
             status = 'open'
         )
-        order.save()
+
+        user.fund = user.fund - quantity * price
+
+        with db.atomic() as transaction:
+            try:
+                order.save()
+                user.save()
+                print("Passed buy")
+            except Exception as identifier:
+                transaction.rollback()
+                print("Failed buy")
         return order
 
     def _close_sell_orders(self, order_id, price):
@@ -65,9 +75,9 @@ class Broker(object):
         if status == 'pass':
             order = None
             if order_id is None:
-                
+                order = self._create_new_sell_order(account_id, instrument, quantity, price, trade_type)
             else:
-                
+                order = self._close_buy_orders(order_id, price)
             return {
                 'order_id': str(order._id),
                 'status': status
@@ -88,11 +98,19 @@ class Broker(object):
             sell_price = price,
             status = 'open'
         )
-        order.save()
+
+        user.fund = user.fund - quantity * price
+
+        with db.atomic() as transaction:
+            try:
+                order.save()
+                user.save()
+            except Exception as identifier:
+                transaction.rollback()
         return order
 
     def _close_buy_orders(self, order_id, price):
-        order = order.get(_id=order_id)
+        order = Order.get(_id=order_id)
         order.buy_price = price
         order.status='close'
         user = order.user

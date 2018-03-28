@@ -17,9 +17,9 @@ def get_quotes(instrument, timestamp, lookback):
 def execute_order(account_id, instrument, quantity, price, signal, order_id=None):
     ##### TODO ####
     # Create or update order for user account_id
-
+    print(account_id, instrument, quantity, price, signal, order_id)
     if signal == 'buy':
-        broker.buy(account_id, instrument, quantity, price, signal, order_id)
+        return broker.buy(account_id, instrument, quantity, price, signal, order_id)
     else:
-        broker.sell(account_id, instrument, quantity, price, signal, order_id)
+        return broker.sell(account_id, instrument, quantity, price, signal, order_id)
 

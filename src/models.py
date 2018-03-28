@@ -20,14 +20,14 @@ class User(Model):
 
 
 class Order(Model):
-    _id = UUIDField(default=uuid.uuid1(), primary_key=True)
+    _id = UUIDField(default=uuid.uuid1())
     user = ForeignKeyField(User, backref='orders')
     instrument = CharField()
     quantity = IntegerField()
-    trade_type = CharField(choices=[(1, 'long'), (2, 'short')])
+    trade_type = CharField()
     buy_price = FloatField(null=True)
     sell_price = FloatField(null=True)
-    status = CharField(choices=[(1,'open'), (2, 'close')])
+    status = CharField()
 
     class Meta:
         database = mysql_db
