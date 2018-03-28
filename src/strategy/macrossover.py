@@ -2,7 +2,7 @@ from src.common.pubsub import Service
 from src.tasks import get_quotes, execute_order
 from src.settings import Config
 from datetime import datetime, timedelta
-from src.models import User
+from src.models import User, Order
 from src.common import Session
 
 
@@ -56,26 +56,35 @@ class Algorithm(Service):
         sma = self.ma(result, self.args['sma_period'])
         lma = self.ma(result, self.args['lma_period'])
         
-        result = self._place_order(sma, lma, result[-1])
+        current_price = result[-1]
+        
+        result = self._place_order(sma, lma, current_price)
         _u = self._get_updated_user()
-        print(self.current_date, 'buy' if sma > lma else 'sell', _u.fund, result)
+        # print(self.current_date, 'buy' if sma > lma else 'sell', _u.fund, result)
+        
         if self.current_date == self.args['end_date']:
-            self.output_result()
+            self.output_portfolio_value(current_price)
             self.session.clear()
             exit()
 
     def _sell_or_close_order(self, sma, lma, price, quantity):
         results = []
         # Check if any open long orders exist
-        orders = self.user.orders.filter(trade_type='long', status='open')
+        orders = Order.select().where(
+            Order.user==self.user,
+            Order.trade_type=='long',
+            Order.status=='open'
+        )
+        # print("length is", len(orders))
         if len(orders):
+            _o = None
             for order in orders:
                 result = execute_order.delay(
                     self.user.name, 
                     self.args['instrument'],
                     quantity,
                     price,
-                    'buy',
+                    'sell',
                     order._id
                 ).get()
                 results.append(result)
@@ -106,7 +115,7 @@ class Algorithm(Service):
                     self.args['instrument'],
                     quantity,
                     price,
-                    'sell',
+                    'buy',
                     order._id
                 ).get()
                 results.append(result)
@@ -133,11 +142,11 @@ class Algorithm(Service):
         
         if sma < lma:
             # Check if any open long orders exist
-            self._sell_or_close_order(sma, lma, price, quantity)
+            return self._sell_or_close_order(sma, lma, price, quantity)
             
         # If sma > lma then buy
         elif sma > lma:
-            self._buy_or_close_order(sma, lma, price, quantity)
+            return self._buy_or_close_order(sma, lma, price, quantity)
             
         
     def _get_user(self, account_id, initial_capital):
@@ -170,5 +179,15 @@ class Algorithm(Service):
         for user in users.iterator():
             return user
 
-    def output_result(self):
-        pass
+    def output_portfolio_value(self, current_price):
+        user = self._get_updated_user()
+        open_orders = Order.select().where(
+            Order.user==user,
+            Order.status=='open'
+        )
+        open_order_value = 0
+        for order in open_orders:
+            open_order_value += current_price * order.quantity
+
+        portfolio_value = user.fund + open_order_value
+        print("Portfolio value: Rs %s" % portfolio_value)

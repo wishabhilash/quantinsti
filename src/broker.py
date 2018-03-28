@@ -51,11 +51,12 @@ class Broker(object):
         return order
 
     def _close_sell_orders(self, order_id, price):
+        print("Closing sell orders")
         order = Order.get(_id=order_id)
         order.sell_price = price
         order.status='close'
         user = order.user
-        user.fund = order.price * order.quantity
+        user.fund = order.sell_price * order.quantity
 
         with db.atomic() as transaction:
             try:
@@ -89,6 +90,7 @@ class Broker(object):
             }
 
     def _create_new_sell_order(self, account_id, instrument, quantity, price, trade_type):
+        print("Creating new sell orders")
         user = User.get(name=account_id)
         order = Order(
             user = user,
@@ -110,11 +112,12 @@ class Broker(object):
         return order
 
     def _close_buy_orders(self, order_id, price):
+        print("Closing buy orders")
         order = Order.get(_id=order_id)
         order.buy_price = price
         order.status='close'
         user = order.user
-        user.fund = order.price * order.quantity
+        user.fund = order.buy_price * order.quantity
 
         with db.atomic() as transaction:
             try:

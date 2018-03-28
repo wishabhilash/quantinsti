@@ -19,7 +19,7 @@ def execute_order(account_id, instrument, quantity, price, signal, order_id=None
     # Create or update order for user account_id
     print(account_id, instrument, quantity, price, signal, order_id)
     if signal == 'buy':
-        return broker.buy(account_id, instrument, quantity, price, signal, order_id)
+        return broker.buy(account_id, instrument, quantity, price, 'long', order_id)
     else:
-        return broker.sell(account_id, instrument, quantity, price, signal, order_id)
+        return broker.sell(account_id, instrument, quantity, price, 'short', order_id)
 
